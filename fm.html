@@ -1,216 +1,154 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
 <meta charset="UTF-8" />
-<title>webOS File Manager</title>
+<title>File Manager with Color Status</title>
 <style>
   body {
-    margin: 0;
+    margin: 0; 
     font-family: sans-serif;
     background: url("https://wallpapers.com/images/hd/white-screen-background-m39hwtpzx7oge430.jpg") no-repeat center center fixed;
     background-size: cover;
-    color: black;
+    color: #000;
   }
   main {
     padding: 20px;
-    background-color: rgba(255,255,255,0.8);
+    background: rgba(255,255,255,0.9);
     min-height: 100vh;
   }
   button {
-    margin: 5px;
+    margin: 5px 10px 5px 0;
     padding: 10px 15px;
-    font-size: 1em;
-  }
-  #fileList {
-    margin-top: 20px;
-  }
-  .file {
+    font-size: 1rem;
     cursor: pointer;
-    margin: 5px 0;
   }
-  .file:hover {
-    text-decoration: underline;
-  }
-  #preview {
+  #file-list {
     margin-top: 20px;
-    max-width: 100%;
+    max-height: 60vh;
+    overflow-y: auto;
+    border: 1px solid #ccc;
+    background: white;
+    padding: 10px;
+    border-radius: 6px;
   }
-  video, audio, img {
-    max-width: 100%;
-    height: auto;
+  #color-status {
+    position: fixed;
+    top: 12px;
+    right: 12px;
+    padding: 12px 20px;
+    font-weight: bold;
+    border-radius: 6px;
+    color: white;
+    user-select: none;
+    z-index: 9999;
+    background-color: gray;
+    min-width: 180px;
+    text-align: center;
+    box-shadow: 0 0 8px rgba(0,0,0,0.3);
+  }
+  ul {
+    list-style-type: none;
+    padding-left: 0;
+  }
+  li {
+    margin: 6px 0;
+    cursor: pointer;
+  }
+  li.folder {
+    font-weight: bold;
   }
 </style>
 </head>
 <body>
 <main>
-  <h1>webOS File Manager</h1>
-  <div>
-    <button onclick="navigateUp()">.. Parent Directory</button>
-    <button onclick="loadFiles()">Refresh</button>
-    <button onclick="deleteSelected()">Delete</button>
-    <button onclick="copySelected()">Copy</button>
-    <button onclick="cutSelected()">Cut</button>
-    <button onclick="pasteSelected()">Paste</button>
-    <button onclick="downloadSelected()">Download</button>
-  </div>
-  <h3>Current path: <span id="pathDisplay"></span></h3>
-  <div id="fileList"></div>
-  <div id="preview"></div>
+  <h1>File Manager</h1>
+  <button onclick="goParent()">.. Parent directory</button>
+  <button onclick="loadFiles(currentPath)">Refresh</button>
+  <div id="file-list">No files loaded.</div>
 </main>
 
-<script>
-  let currentPath = "/media/internal/";  // Change this if needed for your TV
-  let selectedFile = null;
-  let clipboard = { action: null, file: null, fromPath: null };
+<div id="color-status">Status: Ready</div>
 
-  function updatePathDisplay() {
-    document.getElementById("pathDisplay").textContent = currentPath;
+<script>
+  const statusEl = document.getElementById("color-status");
+  const fileListEl = document.getElementById("file-list");
+  let currentPath = "/media/internal/";
+
+  function setStatus(message, color) {
+    statusEl.textContent = "Status: " + message;
+    statusEl.style.backgroundColor = color;
   }
 
-  function loadFiles() {
+  function loadFiles(path) {
+    setStatus("Trying to access files...", "yellow");
     if (!window.webOS || !webOS.service) {
-      alert("webOS service not available.");
+      setStatus("Error: Can't load files (webOS service unavailable)", "red");
+      fileListEl.innerHTML = "";
       return;
     }
 
     webOS.service.request("luna://com.webos.service.filemanager", {
       method: "list",
-      parameters: { path: currentPath },
-      onSuccess: function (res) {
-        const list = document.getElementById("fileList");
-        list.innerHTML = "";
-        selectedFile = null;
-        clearPreview();
-
-        if (!res.files || res.files.length === 0) {
-          list.textContent = "(No files or directory is empty)";
-          return;
+      parameters: { path: path },
+      onSuccess: (res) => {
+        if (res.files) {
+          currentPath = path;
+          setStatus("Loaded files successfully", "green");
+          renderFiles(res.files);
+        } else {
+          setStatus("Loaded files successfully (empty folder)", "green");
+          fileListEl.innerHTML = "<i>No files in this directory.</i>";
         }
-
-        res.files.forEach(f => {
-          const div = document.createElement("div");
-          div.textContent = f.name + (f.isDirectory ? "/" : "");
-          div.className = "file";
-          div.onclick = () => handleFileClick(f);
-          list.appendChild(div);
-        });
       },
-      onFailure: function (err) {
-        alert("Error listing files:\n" + JSON.stringify(err));
+      onFailure: (err) => {
+        setStatus("Error: Can't load files", "red");
+        fileListEl.innerHTML = "";
+        console.error(err);
       }
     });
   }
 
-  function handleFileClick(f) {
-    selectedFile = f;
-    if (f.isDirectory) {
-      if (!currentPath.endsWith("/")) currentPath += "/";
-      currentPath += f.name + "/";
-      updatePathDisplay();
-      loadFiles();
-      clearPreview();
+  function renderFiles(files) {
+    if (!files.length) {
+      fileListEl.innerHTML = "<i>No files in this directory.</i>";
+      return;
+    }
+    let html = "<ul>";
+    files.forEach(file => {
+      const isFolder = file.type === "directory";
+      html += `<li class="${isFolder ? "folder" : "file"}" onclick="fileClick('${file.fullPath}', ${isFolder})">${file.name}${isFolder ? " /" : ""}</li>`;
+    });
+    html += "</ul>";
+    fileListEl.innerHTML = html;
+  }
+
+  function fileClick(path, isFolder) {
+    if (isFolder) {
+      loadFiles(path);
     } else {
-      previewFile(f.name);
+      alert("File selected:\n" + path);
+      // Add file actions here if needed (preview, download, etc)
     }
   }
 
-  function navigateUp() {
-    if (currentPath === "/" || currentPath === "") return;
+  function goParent() {
+    if (currentPath === "/") return;
     let parts = currentPath.split("/").filter(Boolean);
     parts.pop();
-    currentPath = "/" + parts.join("/") + "/";
-    updatePathDisplay();
-    loadFiles();
-    clearPreview();
+    let parent = "/" + parts.join("/");
+    if (parent === "") parent = "/";
+    loadFiles(parent);
   }
 
-  function previewFile(fileName) {
-    const fullPath = currentPath + fileName;
-    const preview = document.getElementById("preview");
-    preview.innerHTML = "";
-
-    const ext = fileName.split(".").pop().toLowerCase();
-    if (["jpg", "jpeg", "png", "gif"].includes(ext)) {
-      const img = document.createElement("img");
-      img.src = "file://" + fullPath;
-      preview.appendChild(img);
-    } else if (["mp4", "webm", "mkv"].includes(ext)) {
-      const vid = document.createElement("video");
-      vid.src = "file://" + fullPath;
-      vid.controls = true;
-      preview.appendChild(vid);
-    } else if (["mp3", "wav", "ogg"].includes(ext)) {
-      const audio = document.createElement("audio");
-      audio.src = "file://" + fullPath;
-      audio.controls = true;
-      preview.appendChild(audio);
-    } else {
-      preview.textContent = "No preview available.";
-    }
-  }
-
-  function clearPreview() {
-    document.getElementById("preview").innerHTML = "";
-  }
-
-  function deleteSelected() {
-    if (!selectedFile) return alert("Select a file or folder to delete.");
-    const target = currentPath + selectedFile.name;
-    webOS.service.request("luna://com.webos.service.filemanager", {
-      method: "delete",
-      parameters: { target },
-      onSuccess: () => {
-        alert("Deleted successfully.");
-        loadFiles();
-      },
-      onFailure: (e) => alert("Delete failed:\n" + JSON.stringify(e))
-    });
-  }
-
-  function copySelected() {
-    if (!selectedFile) return alert("Select a file or folder to copy.");
-    clipboard = { action: "copy", file: selectedFile.name, fromPath: currentPath };
-    alert("Copied: " + clipboard.file);
-  }
-
-  function cutSelected() {
-    if (!selectedFile) return alert("Select a file or folder to cut.");
-    clipboard = { action: "cut", file: selectedFile.name, fromPath: currentPath };
-    alert("Cut: " + clipboard.file);
-  }
-
-  function pasteSelected() {
-    if (!clipboard.file) return alert("Clipboard is empty.");
-    const src = clipboard.fromPath + clipboard.file;
-    const dst = currentPath + clipboard.file;
-
-    const method = clipboard.action === "copy" ? "copy" : "move";
-
-    webOS.service.request("luna://com.webos.service.filemanager", {
-      method,
-      parameters: {
-        source: src,
-        destination: dst
-      },
-      onSuccess: () => {
-        alert("Pasted successfully.");
-        loadFiles();
-      },
-      onFailure: (e) => alert("Paste failed:\n" + JSON.stringify(e))
-    });
-
-    clipboard = { action: null, file: null, fromPath: null };
-  }
-
-  function downloadSelected() {
-    if (!selectedFile) return alert("Select a file to download.");
-    const fileURL = "file://" + currentPath + selectedFile.name;
-    alert("You can access the file at:\n" + fileURL);
-  }
-
+  // On load, load root directory
   window.onload = () => {
-    updatePathDisplay();
-    loadFiles();
+    // Detect if webOS present, else show blue status
+    if (!window.webOS || !webOS.service) {
+      setStatus("Using different OS", "blue");
+      fileListEl.innerHTML = "<i>webOS Luna service not detected.</i>";
+      return;
+    }
+    loadFiles(currentPath);
   };
 </script>
 </body>
