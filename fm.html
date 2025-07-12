@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>webOS File Manager</title>
+  <style>
+    body {
+      margin: 0;
+      font-family: sans-serif;
+      background: url("https://wallpapers.com/images/hd/white-screen-background-m39hwtpzx7oge430.jpg") no-repeat center center fixed;
+      background-size: cover;
+      color: black;
+    }
+
+    main {
+      backdrop-filter: blur(2px);
+      padding: 20px;
+    }
+
+    button {
+      margin: 5px;
+      padding: 10px 15px;
+      font-size: 1em;
+    }
+
+    #fileList {
+      margin-top: 20px;
+    }
+
+    .file {
+      cursor: pointer;
+      margin: 5px 0;
+    }
+
+    .file:hover {
+      text-decoration: underline;
+    }
+
+    #preview {
+      margin-top: 20px;
+      max-width: 100%;
+    }
+
+    video, audio, img {
+      max-width: 100%;
+      height: auto;
+    }
+  </style>
+</head>
+<body>
+
+<main>
+  <h1>webOS File Manager</h1>
+
+  <div>
+    <button onclick="navigateUp()">.. Parent Directory</button>
+    <button onclick="loadFiles()">Refresh</button>
+    <button onclick="deleteSelected()">Delete</button>
+    <button onclick="copySelected()">Copy</button>
+    <button onclick="cutSelected()">Cut</button>
+    <button onclick="pasteSelected()">Paste</button>
+    <button onclick="downloadSelected()">Download</button>
+  </div>
+
+  <h3>Current path: <span id="pathDisplay">/media/internal/</span></h3>
+
+  <div id="fileList"></div>
+
+  <div id="preview"></div>
+</main>
+
+<script>
+  let currentPath = "/media/internal/";
+  let selectedFile = null;
+  let clipboard = { action: null, file: null };
+
+  function updatePathDisplay() {
+    document.getElementById("pathDisplay").textContent = currentPath;
+  }
+
+  function loadFiles() {
+    if (!window.webOS || !webOS.service) {
+      alert("Not running in webOS environment.");
+      return;
+    }
+
+    webOS.service.request("luna://com.webos.service.filemanager", {
+      method: "list",
+      parameters: { path: currentPath },
+      onSuccess: function (res) {
+        const list = document.getElementById("fileList");
+        list.innerHTML = "";
+
+        res.files.forEach(f => {
+          const div = document.createElement("div");
+          div.textContent = f.name + (f.type === "directory" ? "/" : "");
+          div.className = "file";
+          div.onclick = () => handleFileClick(f);
+          list.appendChild(div);
+        });
+      },
+      onFailure: function (err) {
+        alert("Error: " + JSON.stringify(err));
+      }
+    });
+  }
+
+  function handleFileClick(f) {
+    selectedFile = f;
+    if (f.type === "directory") {
+      currentPath += f.name + "/";
+      updatePathDisplay();
+      loadFiles();
+      clearPreview();
+    } else {
+      previewFile(f.name);
+    }
+  }
+
+  function navigateUp() {
+    const parts = currentPath.split("/");
+    parts.pop(); parts.pop();
+    currentPath = parts.join("/") + "/";
+    updatePathDisplay();
+    loadFiles();
+    clearPreview();
+  }
+
+  function previewFile(fileName) {
+    const fullPath = currentPath + fileName;
+    const preview = document.getElementById("preview");
+    preview.innerHTML = "";
+
+    const ext = fileName.split(".").pop().toLowerCase();
+    if (["jpg", "jpeg", "png", "gif"].includes(ext)) {
+      const img = document.createElement("img");
+      img.src = "file://" + fullPath;
+      preview.appendChild(img);
+    } else if (["mp4", "webm"].includes(ext)) {
+      const vid = document.createElement("video");
+      vid.src = "file://" + fullPath;
+      vid.controls = true;
+      preview.appendChild(vid);
+    } else if (["mp3", "wav", "ogg"].includes(ext)) {
+      const audio = document.createElement("audio");
+      audio.src = "file://" + fullPath;
+      audio.controls = true;
+      preview.appendChild(audio);
+    } else {
+      preview.textContent = "No preview available.";
+    }
+  }
+
+  function clearPreview() {
+    document.getElementById("preview").innerHTML = "";
+  }
+
+  function deleteSelected() {
+    if (!selectedFile) return alert("No file selected.");
+    const filePath = currentPath + selectedFile.name;
+    webOS.service.request("luna://com.webos.service.filemanager", {
+      method: "delete",
+      parameters: { target: filePath },
+      onSuccess: () => {
+        alert("Deleted.");
+        loadFiles();
+      },
+      onFailure: (e) => alert("Delete failed: " + JSON.stringify(e))
+    });
+  }
+
+  function copySelected() {
+    if (!selectedFile) return alert("No file selected.");
+    clipboard = { action: "copy", file: selectedFile.name };
+    alert("Copied: " + clipboard.file);
+  }
+
+  function cutSelected() {
+    if (!selectedFile) return alert("No file selected.");
+    clipboard = { action: "cut", file: selectedFile.name };
+    alert("Cut: " + clipboard.file);
+  }
+
+  function pasteSelected() {
+    if (!clipboard.file) return alert("Clipboard is empty.");
+    const src = currentPath + clipboard.file;
+    const dst = currentPath + "copied_" + clipboard.file;
+    const method = clipboard.action === "copy" ? "copy" : "move";
+
+    webOS.service.request("luna://com.webos.service.filemanager", {
+      method: method,
+      parameters: {
+        source: src,
+        destination: dst
+      },
+      onSuccess: () => {
+        alert("Pasted.");
+        loadFiles();
+      },
+      onFailure: (e) => alert("Paste failed: " + JSON.stringify(e))
+    });
+
+    clipboard = { action: null, file: null };
+  }
+
+  function downloadSelected() {
+    if (!selectedFile) return alert("No file selected.");
+    const path = currentPath + selectedFile.name;
+    alert("Manual download URL: file://" + path);
+  }
+
+  window.onload = () => {
+    updatePathDisplay();
+    loadFiles();
+  };
+</script>
+
+</body>
+</html>
