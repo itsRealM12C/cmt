@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>cheering tv test</title>
+  <style>
+    body {
+      margin: 0;
+      background: black;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+    }
+
+    #openBtn {
+      width: 200px;
+      height: 200px;
+      background: url('https://upload.wikimedia.org/wikipedia/commons/thumb/a/ac/No_image_available.svg/480px-No_image_available.svg.png') no-repeat center center;
+      background-size: cover;
+      border: none;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+
+  <button id="openBtn" title="Launch Cheering TV"></button>
+
+  <!-- CORRECT: GitHub Pages version, not raw.githubusercontent.com -->
+  <script src="https://webosappclub.github.io/msx/instart/webOSTV.js"></script>
+  <script src="https://webosappclub.github.io/msx/instart/webOSTV-dev.js"></script>
+
+  <script>
+    document.getElementById("openBtn").addEventListener("click", function () {
+      if (typeof webOS !== "undefined" && webOS.service) {
+        webOS.service.request("luna://com.webos.applicationManager", {
+          method: "launch",
+          parameters: {
+            id: "com.webos.app.cheeringtv"
+          },
+          onSuccess: function () {
+            console.log("App launched successfully!");
+          },
+          onFailure: function (err) {
+            console.error("Failed to launch app:", err);
+          }
+        });
+      } else {
+        alert("webOS APIs not available. Are you running this on a real webOS TV?");
+      }
+    });
+  </script>
+
+</body>
+</html>
