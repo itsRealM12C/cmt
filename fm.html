@@ -1,67 +1,67 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8" />
-<title>File Manager with Color Status</title>
-<style>
-  body {
-    margin: 0; 
-    font-family: sans-serif;
-    background: url("https://wallpapers.com/images/hd/white-screen-background-m39hwtpzx7oge430.jpg") no-repeat center center fixed;
-    background-size: cover;
-    color: #000;
-  }
-  main {
-    padding: 20px;
-    background: rgba(255,255,255,0.9);
-    min-height: 100vh;
-  }
-  button {
-    margin: 5px 10px 5px 0;
-    padding: 10px 15px;
-    font-size: 1rem;
-    cursor: pointer;
-  }
-  #file-list {
-    margin-top: 20px;
-    max-height: 60vh;
-    overflow-y: auto;
-    border: 1px solid #ccc;
-    background: white;
-    padding: 10px;
-    border-radius: 6px;
-  }
-  #color-status {
-    position: fixed;
-    top: 12px;
-    right: 12px;
-    padding: 12px 20px;
-    font-weight: bold;
-    border-radius: 6px;
-    color: white;
-    user-select: none;
-    z-index: 9999;
-    background-color: gray;
-    min-width: 180px;
-    text-align: center;
-    box-shadow: 0 0 8px rgba(0,0,0,0.3);
-  }
-  ul {
-    list-style-type: none;
-    padding-left: 0;
-  }
-  li {
-    margin: 6px 0;
-    cursor: pointer;
-  }
-  li.folder {
-    font-weight: bold;
-  }
-</style>
+  <meta charset="UTF-8" />
+  <title>webOS File Manager</title>
+  <style>
+    body {
+      margin: 0;
+      font-family: sans-serif;
+      background: url("https://wallpapers.com/images/hd/white-screen-background-m39hwtpzx7oge430.jpg") no-repeat center center fixed;
+      background-size: cover;
+      color: #000;
+    }
+    main {
+      padding: 20px;
+      background: rgba(255,255,255,0.9);
+      min-height: 100vh;
+    }
+    button {
+      margin: 5px 10px 5px 0;
+      padding: 10px 15px;
+      font-size: 1rem;
+      cursor: pointer;
+    }
+    #file-list {
+      margin-top: 20px;
+      max-height: 60vh;
+      overflow-y: auto;
+      border: 1px solid #ccc;
+      background: white;
+      padding: 10px;
+      border-radius: 6px;
+    }
+    #color-status {
+      position: fixed;
+      top: 12px;
+      right: 12px;
+      padding: 12px 20px;
+      font-weight: bold;
+      border-radius: 6px;
+      color: white;
+      user-select: none;
+      z-index: 9999;
+      background-color: gray;
+      min-width: 190px;
+      text-align: center;
+      box-shadow: 0 0 8px rgba(0,0,0,0.3);
+    }
+    ul {
+      list-style-type: none;
+      padding-left: 0;
+    }
+    li {
+      margin: 6px 0;
+      cursor: pointer;
+    }
+    li.folder {
+      font-weight: bold;
+    }
+  </style>
 </head>
 <body>
 <main>
-  <h1>File Manager</h1>
+  <h1>webOS File Manager</h1>
   <button onclick="goParent()">.. Parent directory</button>
   <button onclick="loadFiles(currentPath)">Refresh</button>
   <div id="file-list">No files loaded.</div>
@@ -70,9 +70,9 @@
 <div id="color-status">Status: Ready</div>
 
 <script>
-  const statusEl = document.getElementById("color-status");
-  const fileListEl = document.getElementById("file-list");
-  let currentPath = "/media/internal/";
+  var statusEl = document.getElementById("color-status");
+  var fileListEl = document.getElementById("file-list");
+  var currentPath = "/media/internal/";
 
   function setStatus(message, color) {
     statusEl.textContent = "Status: " + message;
@@ -81,17 +81,18 @@
 
   function loadFiles(path) {
     setStatus("Trying to access files...", "yellow");
+
     if (!window.webOS || !webOS.service) {
       setStatus("Error: Can't load files (webOS service unavailable)", "red");
-      fileListEl.innerHTML = "";
+      fileListEl.innerHTML = "<i>webOS service not available.</i>";
       return;
     }
 
     webOS.service.request("luna://com.webos.service.filemanager", {
       method: "list",
       parameters: { path: path },
-      onSuccess: (res) => {
-        if (res.files) {
+      onSuccess: function(res) {
+        if (res.files && res.files.length > 0) {
           currentPath = path;
           setStatus("Loaded files successfully", "green");
           renderFiles(res.files);
@@ -100,7 +101,7 @@
           fileListEl.innerHTML = "<i>No files in this directory.</i>";
         }
       },
-      onFailure: (err) => {
+      onFailure: function(err) {
         setStatus("Error: Can't load files", "red");
         fileListEl.innerHTML = "";
         console.error(err);
@@ -113,9 +114,10 @@
       fileListEl.innerHTML = "<i>No files in this directory.</i>";
       return;
     }
-    let html = "<ul>";
-    files.forEach(file => {
-      const isFolder = file.type === "directory";
+
+    var html = "<ul>";
+    files.forEach(function(file) {
+      var isFolder = file.type === "directory";
       html += `<li class="${isFolder ? "folder" : "file"}" onclick="fileClick('${file.fullPath}', ${isFolder})">${file.name}${isFolder ? " /" : ""}</li>`;
     });
     html += "</ul>";
@@ -127,28 +129,25 @@
       loadFiles(path);
     } else {
       alert("File selected:\n" + path);
-      // Add file actions here if needed (preview, download, etc)
     }
   }
 
   function goParent() {
     if (currentPath === "/") return;
-    let parts = currentPath.split("/").filter(Boolean);
+    var parts = currentPath.split("/").filter(Boolean);
     parts.pop();
-    let parent = "/" + parts.join("/");
+    var parent = "/" + parts.join("/");
     if (parent === "") parent = "/";
     loadFiles(parent);
   }
 
-  // On load, load root directory
-  window.onload = () => {
-    // Detect if webOS present, else show blue status
-    if (!window.webOS || !webOS.service) {
+  window.onload = function () {
+    if (window.webOS && webOS.service) {
+      loadFiles(currentPath); // ✅ correct platform
+    } else {
       setStatus("Using different OS", "blue");
-      fileListEl.innerHTML = "<i>webOS Luna service not detected.</i>";
-      return;
+      fileListEl.innerHTML = "<i>This app requires webOS Luna Service.</i>";
     }
-    loadFiles(currentPath);
   };
 </script>
 </body>
