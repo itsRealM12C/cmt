@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>cheering tv test</title>
+  <style>
+    body {
+      background-color: #000;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      margin: 0;
+      font-family: sans-serif;
+    }
+
+    #openBtn {
+      width: 150px;
+      height: 150px;
+      background-image: url('IMAGE_URL_HERE'); /* Replace this */
+      background-size: cover;
+      background-position: center;
+      background-repeat: no-repeat;
+      border: none;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+  <button id="openBtn"></button>
+
+  <script>
+    document.getElementById("openBtn").addEventListener("click", function () {
+      var request = webOS.service.request("luna://com.webos.applicationManager", {
+        method: "launch",
+        parameters: {
+          id: "com.webos.app.cheeringtv"
+        }
+      });
+    });
+  </script>
+</body>
+</html>
