@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>webOS Toast Generator</title>
+  <style>
+    body {
+      font-family: sans-serif;
+      background: #111;
+      color: white;
+      padding: 20px;
+    }
+    input {
+      width: 100%;
+      font-size: 16px;
+      padding: 10px;
+      margin-top: 10px;
+      background: #222;
+      color: #0f0;
+      border: 1px solid #555;
+    }
+    button {
+      padding: 10px;
+      margin-top: 10px;
+      background: #007bff;
+      color: white;
+      border: none;
+      cursor: pointer;
+      font-size: 16px;
+    }
+    pre {
+      background: #222;
+      padding: 10px;
+      border: 1px solid #333;
+      margin-top: 10px;
+      white-space: pre-wrap;
+    }
+  </style>
+</head>
+<body>
+
+  <h1>Toast Generator</h1>
+  <p>Type a message below and click Generate to send a toast notification.</p>
+
+  <input type="text" id="toastInput" placeholder="Enter toast message..." />
+  <button onclick="generateToast()">Generate Toast</button>
+
+  <pre id="toastStatus"></pre>
+
+  <script>
+    function generateToast() {
+      const message = document.getElementById("toastInput").value.trim();
+      if (!message) {
+        document.getElementById("toastStatus").textContent = "⚠️ Please enter a message.";
+        return;
+      }
+
+      webOS.service.request("luna://com.webos.notification", {
+        method: "createToast",
+        parameters: {
+          message: message,
+          iconUrl: "/usr/palm/notificationmgr/images/toast-notification-icon.png"
+        },
+        onSuccess: function (response) {
+          document.getElementById("toastStatus").textContent = "✅ Toast sent:\n" + JSON.stringify(response, null, 2);
+        },
+        onFailure: function (error) {
+          document.getElementById("toastStatus").textContent = "❌ Failed to send toast:\n" + JSON.stringify(error, null, 2);
+        }
+      });
+    }
+  </script>
+
+</body>
+</html>
